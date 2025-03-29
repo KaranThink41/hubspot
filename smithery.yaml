@@ -1,0 +1,14 @@
+# smithery.yaml
+startCommand:
+  type: stdio
+  configSchema: {}
+  commandFunction: |-
+    (config) => ({
+      "command": "node",
+      "args": [
+        "dist/index.js"
+      ],
+      "env": {
+        // You can add any environment variables here if needed.
+      }
+    })
