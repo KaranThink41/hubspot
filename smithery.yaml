@@ -1,0 +1,26 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - hubspotAccessToken
+      - sharedContactId
+    properties:
+      hubspotAccessToken:
+        type: string
+        description: "HubSpot API access token (PAT)"
+      sharedContactId:
+        type: string
+        description: "Your shared contact ID for associating notes"
+  commandFunction: |-
+    (config) => ({
+      command: 'node',
+      args: ['build/index.js'],
+      env: {
+        HUBSPOT_ACCESS_TOKEN: config.hubspotAccessToken,
+        SHARED_CONTACT_ID: config.sharedContactId
+      }
+    })
+  exampleConfig:
+    hubspotAccessToken: "your_hubspot_access_token_here"
+    sharedContactId: "your_shared_contact_id_here"
