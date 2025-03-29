@@ -25,6 +25,8 @@
     COPY --from=builder /app/package-lock.json /app/package-lock.json
     
     # Set production environment variable.
+    ENV HUBSPOT_ACCESS_TOKEN=dummy_access_token
+ENV SHARED_CONTACT_ID=dummy_contact_id
     ENV NODE_ENV=production
     
     # Re-install production dependencies.
