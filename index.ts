@@ -9,6 +9,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { createReadStream } from "fs";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -17,7 +18,10 @@ dotenv.config();
 const HUBSPOT_ACCESS_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN || "dummy_access_token";
 const SHARED_CONTACT_ID = process.env.SHARED_CONTACT_ID || "dummy_contact_id";
 
-// Keep STDIN open so the container does not exit when using stdio transport
+// If STDIN is not attached (non-interactive environment), use /dev/null as dummy input.
+if (!process.stdin.isTTY) {
+  process.stdin = createReadStream("/dev/null") as any;
+}
 process.stdin.resume();
 
 class HubSpotMcpServer {
