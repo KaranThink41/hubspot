@@ -1,14 +1,24 @@
 # smithery.yaml
 startCommand:
   type: stdio
-  configSchema: {}
+  configSchema:
+    type: object
+    properties:
+      HUBSPOT_ACCESS_TOKEN:
+        type: string
+        description: "Your HubSpot API access token"
+      SHARED_CONTACT_ID:
+        type: string
+        description: "Your shared contact ID"
+    required:
+      - HUBSPOT_ACCESS_TOKEN
+      - SHARED_CONTACT_ID
   commandFunction: |-
     (config) => ({
-      "command": "node",
-      "args": [
-        "dist/index.js"
-      ],
-      "env": {
-        // You can add any environment variables here if needed.
+      command: "node",
+      args: ["dist/index.js"],
+      env: {
+        HUBSPOT_ACCESS_TOKEN: config.HUBSPOT_ACCESS_TOKEN,
+        SHARED_CONTACT_ID: config.SHARED_CONTACT_ID
       }
     })
