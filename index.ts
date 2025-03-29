@@ -24,6 +24,9 @@ if (!process.env.SHARED_CONTACT_ID) {
 const HUBSPOT_ACCESS_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN;
 const SHARED_CONTACT_ID = process.env.SHARED_CONTACT_ID;
 
+// Keep STDIN open so the container does not exit when using stdio transport
+process.stdin.resume();
+
 class HubSpotMcpServer {
   private server: Server;
   private hubspotClient: HubSpotClient;
@@ -329,7 +332,7 @@ class HubSpotMcpServer {
       const newAuthor = author || currentAuthor;
       const updatedBody = `Title: ${newTitle}\nSummary: ${newSummary}\nAuthor: ${newAuthor}`;
 
-      const resUpdate = await fetch(`https://api.hubspot.com/engagements/v1/engagements/${targetId}`, {
+      const resUpdate = await fetch(`https://api.hubapi.com/engagements/v1/engagements/${targetId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
