@@ -13,16 +13,9 @@ import {
 // Load environment variables from .env file
 dotenv.config();
 
-// Ensure necessary environment variables are set
-if (!process.env.HUBSPOT_ACCESS_TOKEN) {
-  throw new Error("HUBSPOT_ACCESS_TOKEN not found in environment variables");
-}
-if (!process.env.SHARED_CONTACT_ID) {
-  throw new Error("SHARED_CONTACT_ID not found in environment variables");
-}
-
-const HUBSPOT_ACCESS_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN;
-const SHARED_CONTACT_ID = process.env.SHARED_CONTACT_ID;
+// Provide fallback dummy values for local testing
+const HUBSPOT_ACCESS_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN || "dummy_access_token";
+const SHARED_CONTACT_ID = process.env.SHARED_CONTACT_ID || "dummy_contact_id";
 
 // Keep STDIN open so the container does not exit when using stdio transport
 process.stdin.resume();
@@ -33,25 +26,6 @@ class HubSpotMcpServer {
 
   constructor() {
     // Initialize the MCP server with metadata and a list of tools.
-    // Tool descriptions for the Spine AI/LLM client:
-    //
-    // 1. create_shared_summary:
-    //    • Accepts title, summary, and author.
-    //    • Combines these into a note body.
-    //    • Creates a new HubSpot Note engagement linked to a dedicated contact.
-    //
-    // 2. get_summaries:
-    //    • Retrieves summary notes using flexible filters.
-    //    • Optional filters: date (YYYY-MM-DD), dayOfWeek (e.g., "Monday"), limit (number), timeRange ({start, end}).
-    //
-    // 3. update_shared_summary:
-    //    • Updates an existing note.
-    //    • Accepts either an explicit Engagement ID or a search query to find a candidate note.
-    //    • Merges existing note content with any provided new values.
-    //
-    // 4. delete_shared_summary:
-    //    • Deletes a note.
-    //    • Accepts either an explicit Engagement ID or optional filters to locate a candidate note (e.g., "delete my last summary").
     this.server = new Server(
       {
         name: "hubspot-mcp-server",
@@ -176,9 +150,6 @@ class HubSpotMcpServer {
     });
   }
 
-  /**
-   * Create a new summary note in HubSpot.
-   */
   async handleCreateSharedSummary({ title, summary, author }: { title: string; summary: string; author: string }): Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }> {
     try {
       const noteBody = `Title: ${title}\nSummary: ${summary}\nAuthor: ${author}`;
@@ -205,9 +176,6 @@ class HubSpotMcpServer {
     }
   }
 
-  /**
-   * Retrieve summary notes from HubSpot using flexible filters.
-   */
   async handleGetSummaries({ date, dayOfWeek, limit, timeRange }: { date?: string; dayOfWeek?: string; limit?: number; timeRange?: { start: string; end: string } }): Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }> {
     try {
       const res = await fetch("https://api.hubapi.com/engagements/v1/engagements/paged?limit=100", {
@@ -270,16 +238,10 @@ class HubSpotMcpServer {
     }
   }
 
-  /**
-   * Update an existing summary note.
-   * Accepts either an explicit Engagement ID (id) or a search query (query) to find a candidate note.
-   * Merges the current note content with provided updates (title, summary, author).
-   */
   async handleUpdateSharedSummary({ id, query, title, summary, author }: { id?: string; query?: string; title?: string; summary?: string; author?: string }): Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }> {
     try {
       let targetId: string | undefined = id;
 
-      // If no explicit ID is provided, use the query to search for a matching note.
       if (!targetId && query) {
         const res = await fetch("https://api.hubapi.com/engagements/v1/engagements/paged?limit=100", {
           method: "GET",
@@ -304,7 +266,6 @@ class HubSpotMcpServer {
         throw new Error("Please provide an Engagement ID or a search query to locate the summary note.");
       }
 
-      // Retrieve the current note.
       const getRes = await fetch(`https://api.hubapi.com/engagements/v1/engagements/${targetId}`, {
         method: "GET",
         headers: { "Authorization": `Bearer ${HUBSPOT_ACCESS_TOKEN}` },
@@ -351,11 +312,6 @@ class HubSpotMcpServer {
     }
   }
 
-  /**
-   * Delete a summary note.
-   * Accepts either an explicit Engagement ID (id) or optional filters (date, dayOfWeek, limit, timeRange)
-   * to locate a candidate note (e.g., "delete my last summary").
-   */
   async handleDeleteSharedSummary({ id, date, dayOfWeek, limit, timeRange }: { id?: string; date?: string; dayOfWeek?: string; limit?: number; timeRange?: { start: string; end: string } }): Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }> {
     try {
       let targetId: string | undefined = id;
@@ -428,13 +384,85 @@ class HubSpotMcpServer {
     }
   }
 
-  /**
-   * Start the MCP server using STDIO transport.
-   */
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     console.error("HubSpot MCP server running on stdio");
+    // Immediately send an initialization message to advertise capabilities
+    const initMessage = {
+      type: "init",
+      tools: [
+        {
+          name: "create_shared_summary",
+          description: "Create a summary note with title, summary, and author",
+          inputSchema: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Title of the summary" },
+              summary: { type: "string", description: "Content of the summary" },
+              author: { type: "string", description: "Name of the author" },
+            },
+            required: ["title", "summary", "author"],
+          },
+        },
+        {
+          name: "get_summaries",
+          description: "Retrieve summary notes with optional filters",
+          inputSchema: {
+            type: "object",
+            properties: {
+              date: { type: "string", description: "Optional: Date in YYYY-MM-DD format" },
+              dayOfWeek: { type: "string", description: "Optional: Day of the week (e.g., Monday)" },
+              limit: { type: "number", description: "Optional: Number of summaries to return" },
+              timeRange: {
+                type: "object",
+                properties: {
+                  start: { type: "string", description: "Optional: Start time in HH:MM" },
+                  end: { type: "string", description: "Optional: End time in HH:MM" },
+                },
+                description: "Optional: Time range filter",
+              },
+            },
+          },
+        },
+        {
+          name: "update_shared_summary",
+          description: "Update an existing summary note",
+          inputSchema: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "Optional: Engagement ID of the note" },
+              query: { type: "string", description: "Optional: Keyword to search in note content" },
+              title: { type: "string", description: "Optional: Updated title" },
+              summary: { type: "string", description: "Optional: Updated content" },
+              author: { type: "string", description: "Optional: Updated author" },
+            },
+          },
+        },
+        {
+          name: "delete_shared_summary",
+          description: "Delete a summary note",
+          inputSchema: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "Optional: Engagement ID to delete" },
+              date: { type: "string", description: "Optional: Date in YYYY-MM-DD format" },
+              dayOfWeek: { type: "string", description: "Optional: Day of the week (e.g., Monday)" },
+              limit: { type: "number", description: "Optional: Number of summaries to consider (default 1)" },
+              timeRange: {
+                type: "object",
+                properties: {
+                  start: { type: "string", description: "Optional: Start time in HH:MM" },
+                  end: { type: "string", description: "Optional: End time in HH:MM" },
+                },
+                description: "Optional: Time range filter",
+              },
+            },
+          },
+        },
+      ]
+    };
+    process.stdout.write(JSON.stringify(initMessage) + "\n");
   }
 }
 
