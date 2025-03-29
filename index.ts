@@ -2,7 +2,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { Client as HubSpotClient } from "@hubspot/api-client";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 import {
   McpError,
   ErrorCode,
@@ -82,14 +82,12 @@ class HubSpotMcpServer {
   }
 
   private setupToolHandlers() {
+    // Handle list tools request
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         {
           name: "create_shared_summary",
-          description:
-            "Step 1: Accept a title, summary, and author.\n" +
-            "Step 2: Combine these into a note body.\n" +
-            "Step 3: Create a new HubSpot Note engagement associated with a dedicated contact.",
+          description: "Create a summary note with title, summary, and author",
           inputSchema: {
             type: "object",
             properties: {
@@ -102,13 +100,7 @@ class HubSpotMcpServer {
         },
         {
           name: "get_summaries",
-          description:
-            "Retrieve summary notes from HubSpot with flexible filters.\n" +
-            "Optional filters:\n" +
-            "  • date: (YYYY-MM-DD) to filter by a specific date.\n" +
-            "  • dayOfWeek: e.g., 'Monday' to filter by day of the week.\n" +
-            "  • limit: Number of most recent summaries to return.\n" +
-            "  • timeRange: { start: 'HH:MM', end: 'HH:MM' } to filter by time of day.",
+          description: "Retrieve summary notes with optional filters",
           inputSchema: {
             type: "object",
             properties: {
@@ -128,11 +120,7 @@ class HubSpotMcpServer {
         },
         {
           name: "update_shared_summary",
-          description:
-            "Step 1: Provide an explicit Engagement ID OR a search query (query) to locate the note.\n" +
-            "Step 2: Retrieve the current note content.\n" +
-            "Step 3: Merge existing values with any provided updates (title, summary, author).\n" +
-            "Step 4: Update the note while preserving unchanged fields.",
+          description: "Update an existing summary note",
           inputSchema: {
             type: "object",
             properties: {
@@ -146,10 +134,7 @@ class HubSpotMcpServer {
         },
         {
           name: "delete_shared_summary",
-          description:
-            "Delete a summary note from HubSpot.\n" +
-            "Either provide an explicit Engagement ID (id) or use optional filters (date, dayOfWeek, limit, timeRange) " +
-            "to select a candidate note (e.g., 'delete my last summary').",
+          description: "Delete a summary note",
           inputSchema: {
             type: "object",
             properties: {
